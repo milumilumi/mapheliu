@@ -1,62 +1,29 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>谷歌地图划线标记示例</title>
-  <style>
-    /* 让地图填满页面 */
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
-    #map {
-      height: 100%;
-      width: 100%;
-    }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
+  <head>
+    <title>Simple Marker</title>
+    <!-- The callback parameter is required, so we use console.debug as a noop -->
+    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1DDVsoYSslYif9JG1EmZt04uUWiZGJgE&callback=console.debug&libraries=maps,marker&v=beta">
+    </script>
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      gmp-map {
+        height: 100%;
+      }
 
-  <script>
-    let map;
-    let polyline; // 用于存储划线
-    let path = []; // 线的坐标数组
-
-    function initMap() {
-      // 初始化地图，中心点可修改
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 39.9042, lng: 116.4074 }, // 北京
-        zoom: 5,
-      });
-
-      // 初始化折线
-      polyline = new google.maps.Polyline({
-        strokeColor: "#FF0000",
-        strokeOpacity: 1.0,
-        strokeWeight: 3,
-        map: map,
-        path: path
-      });
-
-      // 点击地图添加标记并更新折线
-      map.addListener("click", (event) => {
-        const position = event.latLng;
-        // 添加标记
-        new google.maps.Marker({
-          position: position,
-          map: map
-        });
-        // 更新折线路径
-        path.push(position);
-        polyline.setPath(path);
-      });
-    }
-  </script>
-
-  <!-- 引入谷歌地图 API，替换 YOUR_API_KEY -->
-  <script async src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY_HERE&callback=console.debug&libraries=maps,marker&v=beta">    
-  </script>
-</body>
+      /* Optional: Makes the sample page fill the window. */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <gmp-map center="40.12150192260742,-100.45039367675781" zoom="4" map-id="DEMO_MAP_ID">
+      
+    </gmp-map>
+  </body>
 </html>
