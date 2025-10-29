@@ -22,8 +22,36 @@
     </style>
   </head>
   <body>
+
+    <script>
+    let map;
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 20, lng: 0 },
+        zoom: 2
+      });
+
+      // 加载本地 GeoJSON 文件
+      map.data.loadGeoJson('heliu.json');
+
+      // 设置样式
+      map.data.setStyle({
+        strokeColor: '#0000FF', // 蓝色
+        strokeWeight: 2
+      });
+
+      // 可选：点击河流显示名称
+      map.data.addListener('click', function(event) {
+        const name = event.feature.getProperty('name');
+        alert('河流名称：' + name);
+      });
+    }
+  </script>
+    
     <gmp-map center="40.12150192260742,-100.45039367675781" zoom="4" map-id="DEMO_MAP_ID">
       
     </gmp-map>
   </body>
 </html>
+
