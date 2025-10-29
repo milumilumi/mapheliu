@@ -23,36 +23,46 @@
   </head>
   <body>
 
-    <script>
-    let map;
+ <script>
+let map;
 
-    function initMap() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: -12, lng: 38 },
-		    zoom: 6
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: -12, lng: 38 }, // 莫桑比克附近
+    zoom: 6
+  });
+
+  // 用 fetch 代替 loadGeoJson，这样能修改坐标
+  fetch('heliu.json')
+    .then(res => res.json())
+    .then(data => {
+      // 自动修正坐标顺序 [lat, lng] → [lng, lat]
+      data.features.forEach(f => {
+        if (f.geometry && f.geometry.type === "LineString") {
+          f.geometry.coordinates = f.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        }
       });
 
-      // 加载本地 GeoJSON 文件
-      map.data.loadGeoJson('heliu.json');
+      // 加载修正后的数据
+      map.data.addGeoJson(data);
 
-      // 设置样式
+      // 设置线条样式
       map.data.setStyle({
-        strokeColor: '#0000FF', // 蓝色
-        strokeWeight: 2
+        strokeColor: '#0000FF',
+        strokeWeight: 3
       });
+    })
+    .catch(err => console.error('加载 GeoJSON 失败:', err));
+}
+</script>
 
-      // 可选：点击河流显示名称
-      map.data.addListener('click', function(event) {
-        const name = event.feature.getProperty('name');
-        alert('河流名称：' + name);
-      });
-    }
-  </script>
+
     
     <gmp-map center="40.12150192260742,-100.45039367675781" zoom="4" map-id="DEMO_MAP_ID">
       
     </gmp-map>
   </body>
 </html>
+
 
 
