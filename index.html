@@ -23,11 +23,7 @@
       let map;
 
       function initMap() {
-        // 初始化地图，中心坐标可自行修改
-        map = new google.maps.Map(document.getElementById("map"), {
-          center: { lat: 0, lng: 0 },
-          zoom: 2
-        });
+     
 
         // 加载 JSON 文件
         fetch('heliu.json')
@@ -47,11 +43,7 @@
             // 添加到地图
             map.data.addGeoJson(data);
 
-            // 设置样式
-            map.data.setStyle({
-              strokeColor: '#0000FF',
-              strokeWeight: 2
-            });
+           
           })
           .catch(err => console.error('加载 GeoJSON 失败:', err));
       }
@@ -62,5 +54,6 @@
     </script>
   </body>
 </html>
+
 
 
