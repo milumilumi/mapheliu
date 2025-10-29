@@ -19,37 +19,42 @@
     <!-- 地图容器 -->
     <div id="map"></div>
 
-    <script>
+   <script>
       let map;
 
       function initMap() {
+        // 初始化地图，中心坐标可自行修改
         map = new google.maps.Map(document.getElementById("map"), {
-          center: { lat: -12, lng: 38 }, // 莫桑比克附近
-          zoom: 6
+          center: { lat: 0, lng: 0 },
+          zoom: 2
         });
 
-        // 加载GeoJSON（必须是同目录下的heliu.json）
+        // 加载 JSON 文件
         fetch('heliu.json')
           .then(res => res.json())
           .then(data => {
-            // 修正经纬度顺序
+            // 自动检测坐标顺序，如果第一组坐标大于90，则可能是 [lat,lng]，自动交换
             data.features.forEach(f => {
               if (f.geometry && f.geometry.type === "LineString") {
-                f.geometry.coordinates = f.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                f.geometry.coordinates = f.geometry.coordinates.map(c => {
+                  // 如果纬度大于90，交换顺序
+                  if (Math.abs(c[0]) <= 90 && Math.abs(c[1]) <= 180) return c; // 正常 [lng,lat]
+                  return [c[1], c[0]]; // 交换成 [lng,lat]
+                });
               }
             });
 
+            // 添加到地图
             map.data.addGeoJson(data);
 
-            // 样式
+            // 设置样式
             map.data.setStyle({
               strokeColor: '#0000FF',
-              strokeWeight: 3
+              strokeWeight: 2
             });
           })
           .catch(err => console.error('加载 GeoJSON 失败:', err));
       }
-    </script>
 
     <!-- 用老版 JS API 正确加载 -->
     <script async
@@ -57,3 +62,4 @@
     </script>
   </body>
 </html>
+
