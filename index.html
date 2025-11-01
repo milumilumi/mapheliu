@@ -66,11 +66,11 @@
         });
 
         map.data.addGeoJson(data);
-        map.data.setStyle({
+       // map.data.setStyle({
           //strokeColor: "#000000",
           //strokeWeight: 3,
           //strokeOpacity: 1,
-        });
+     //   });
 
         map.data.addListener("click", (e) => {
           const name = e.feature.getProperty("name") || "未命名河流";
@@ -146,6 +146,7 @@
     
   </body>
 </html>
+
 
 
 
