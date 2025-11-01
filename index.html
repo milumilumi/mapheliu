@@ -20,118 +20,163 @@
   </style>
 </head>
 <body>
+  <!-- 用老版 JS API 正确加载 --> <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1DDVsoYSslYif9JG1EmZt04uUWiZGJgE&callback=initMap"> </script>
   <div id="map"></div>
   <div id="panel">
     <button id="clearBtn">清除</button>
     <span id="info">总距离：0 km 面积：0 km²</span>
   </div>
 
-  <script>
-    let map;
-    let path = [];
-    let polyline;
-    let markers = [];
-    let totalDistance = 0;
-    let polygonClosed = false;
+ <script>
+  let map;
+  let path = [];
+  let polyline;
+  let markers = [];
+  let totalDistance = 0;
+  let infoWindow;
 
-    function initMap() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: {lat:0, lng:0},
-        zoom: 2,
-        mapTypeId: "terrain"
-      });
+  function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: 0, lng: 0 },
+      zoom: 2,
+      mapTypeId: "terrain",
+    });
 
-      polyline = new google.maps.Polyline({
-        path: path,
-        geodesic: true,
-        strokeColor: "#FF0000",
-        strokeWeight: 3,
-        map: map
-      });
-
-      map.addListener("click", (e) => {
-        if (polygonClosed) return; // 闭合后禁止继续点击
-        const clickedLatLng = e.latLng;
-
-        // 如果距离第一个点很近，自动闭合
-        if (path.length >= 3 && clickedLatLng.distanceTo(path[0]) < 10000) { 
-          // 小于10km就闭合
-          path.push(path[0]); // 收尾相连
-          polygonClosed = true;
-          updatePolyline();
-          recalcDistanceAndArea();
-          return;
+    // ===== 加载河流 =====
+    fetch("heliu.json")
+      .then((res) => res.json())
+      .then((data) => {
+        function fixCoordinates(coords) {
+          if (typeof coords[0] === "number" && typeof coords[1] === "number") {
+            const [a, b] = coords;
+            if (Math.abs(a) <= 90 && Math.abs(b) > 90) return [b, a];
+            return [a, b];
+          }
+          return coords.map(fixCoordinates);
         }
 
-        path.push(clickedLatLng);
-        addMarker(clickedLatLng);
-        updatePolyline();
-        recalcDistanceAndArea();
+        data.features.forEach((f) => {
+          if (f.geometry && f.geometry.coordinates) {
+            f.geometry.coordinates = fixCoordinates(f.geometry.coordinates);
+          }
+        });
+
+        map.data.addGeoJson(data);
+        map.data.setStyle({
+          strokeColor: "#0077FF",
+          strokeWeight: 1.5,
+          strokeOpacity: 0.8,
+        });
+
+        map.data.addListener("click", (e) => {
+          const name = e.feature.getProperty("name") || "未命名河流";
+          if (infoWindow) infoWindow.close();
+          infoWindow = new google.maps.InfoWindow({
+            content: `<b>${name}</b>`,
+            position: e.latLng,
+          });
+          infoWindow.open(map);
+        });
       });
 
-      document.getElementById("clearBtn").addEventListener("click", clearAll);
-    }
+    // ===== 测距线初始化 =====
+    polyline = new google.maps.Polyline({
+      path: path,
+      geodesic: true,
+      strokeColor: "#FF0000",
+      strokeOpacity: 0.9,
+      strokeWeight: 2.5,
+      map: map,
+    });
 
-    function addMarker(latLng){
-      const marker = new google.maps.Marker({
-        position: latLng,
-        map: map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 4.5,
-          fillColor: "#000000",
-          fillOpacity: 1,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 1
-        },
-        clickable: false
-      });
-      markers.push(marker);
-    }
+    // 点击地图添加测距点
+    map.addListener("click", (e) => {
+      addPoint(e.latLng);
+    });
 
-    function updatePolyline(){
-      polyline.setPath(path);
-    }
-
-    function recalcDistanceAndArea(){
-      totalDistance = 0;
-      for(let i=1; i<path.length; i++){
-        totalDistance += haversineDistance(path[i-1], path[i]);
+    // 右键撤销上一个点
+    map.addListener("rightclick", () => {
+      if (path.length > 0) {
+        path.pop();
+        polyline.setPath(path);
+        const last = markers.pop();
+        if (last) last.setMap(null);
+        recalcDistance();
       }
-      let area = 0;
-      if(polygonClosed){
-        area = google.maps.geometry.spherical.computeArea(path)/1e6; // km²
-      }
-      document.getElementById("info").innerText = 
-        `总距离：${totalDistance.toFixed(2)} km 面积：${area.toFixed(2)} km²`;
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", clearAll);
+  }
+
+  // 添加测距点（使用黑色圆点）
+  function addPoint(latLng) {
+    path.push(latLng);
+    polyline.setPath(path);
+
+    const marker = new google.maps.Marker({
+      position: latLng,
+      map: map,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE, // 圆形符号
+        scale: 4,                            // 圆点大小
+        fillColor: "#000000",                // 黑色填充
+        fillOpacity: 1,
+        strokeColor: "#FFFFFF",              // 白色边缘
+        strokeWeight: 1,
+      },
+      clickable: false,
+    });
+    markers.push(marker);
+
+    recalcDistance();
+  }
+
+  // 重新计算总距离
+  function recalcDistance() {
+    totalDistance = 0;
+    for (let i = 1; i < path.length; i++) {
+      totalDistance += haversineDistance(path[i - 1], path[i]);
     }
+    document.getElementById("distance").innerText =
+      `总距离：${totalDistance.toFixed(2)} km`;
+  }
 
-    function clearAll(){
-      path = [];
-      totalDistance = 0;
-      polygonClosed = false;
-      polyline.setPath([]);
-      markers.forEach(m => m.setMap(null));
-      markers = [];
-      document.getElementById("info").innerText = "总距离：0 km 面积：0 km²";
-    }
+  // 清除所有测距
+  function clearAll() {
+    path = [];
+    totalDistance = 0;
+    polyline.setPath([]);
+    document.getElementById("distance").innerText = "总距离：0 km";
+    markers.forEach((m) => m.setMap(null));
+    markers = [];
+  }
 
-    function haversineDistance(p1,p2){
-      const R = 6371;
-      const lat1 = p1.lat()*Math.PI/180;
-      const lat2 = p2.lat()*Math.PI/180;
-      const dLat = lat2 - lat1;
-      const dLng = (p2.lng()-p1.lng())*Math.PI/180;
-      const a = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
-      return 2*R*Math.asin(Math.sqrt(a));
-    }
-  </script>
+  // 球面距离
+  function haversineDistance(p1, p2) {
+    const R = 6371;
+    const lat1 = p1.lat() * Math.PI / 180;
+    const lat2 = p2.lat() * Math.PI / 180;
+    const dLat = lat2 - lat1;
+    const dLng = (p2.lng() - p1.lng()) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(lat1) * Math.cos(lat2) *
+              Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+</script>
+
+<!-- ✅ 一定要带 geometry 库 -->
+<script async
+  src="https://maps.googleapis.com/maps/api/js?key=你的API_KEY&libraries=geometry&callback=initMap">
+</script>
 
 
 
-    <!-- 用老版 JS API 正确加载 --> <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1DDVsoYSslYif9JG1EmZt04uUWiZGJgE&callback=initMap"> </script>
+
+    
   </body>
 </html>
+
 
 
 
