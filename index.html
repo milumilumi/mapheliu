@@ -66,7 +66,14 @@
         });
 
         map.data.addGeoJson(data);
-    
+		  
+    	map.data.setStyle(function(feature) {
+  			return {
+			    strokeColor: feature.getProperty('stroke') || '#000000',      // 黑色为默认
+			    strokeWeight: feature.getProperty('stroke-width') || 7,       // 7 为默认
+			    strokeOpacity: feature.getProperty('stroke-opacity') || 1
+			  };
+			});
 
         map.data.addListener("click", (e) => {
           const name = e.feature.getProperty("name") || "未命名河流";
@@ -142,6 +149,7 @@
     
   </body>
 </html>
+
 
 
 
