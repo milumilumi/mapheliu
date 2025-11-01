@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>河流地图</title>
+    <title>河流地图 + 测距工具</title>
     <style>
       html, body {
         height: 100%;
@@ -13,82 +13,6 @@
         height: 100%;
         width: 100%;
       }
-    </style>
-  </head>
-  <body>
-    <!-- 地图容器 -->
-    <div id="map"></div>
-        <div id="panel">
-          <button id="clearBtn">清除测距</button>
-          <span id="distance">总距离：0 km</span>
-        </div>
-   <script>
-  let map;
-
-  function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-      center: { lat: 0, lng: 0 },
-      zoom: 2,
-      mapTypeId: "terrain" // 用地形图更容易看河流
-    });
-
-    // 加载 GeoJSON
-    fetch('heliu.json')
-      .then(res => res.json())
-      .then(data => {
-        // 递归修复函数，适用于 LineString / MultiLineString / Polygon / MultiPolygon
-        function fixCoordinates(coords) {
-          // 如果是数字对 [x,y]
-          if (typeof coords[0] === "number" && typeof coords[1] === "number") {
-            const [a, b] = coords;
-            // 如果第一个数在 -90~90 之间（像纬度），第二个在 -180~180（像经度），说明反了
-            if (Math.abs(a) <= 90 && Math.abs(b) > 90) {
-              return [b, a]; // 交换为 [lng, lat]
-            }
-            return [a, b]; // 保持原样
-          }
-          // 如果是多层数组（线/多线/多边形）
-          return coords.map(fixCoordinates);
-        }
-
-        // 遍历所有 Feature
-        data.features.forEach(f => {
-          if (f.geometry && f.geometry.coordinates) {
-            f.geometry.coordinates = fixCoordinates(f.geometry.coordinates);
-          }
-        });
-
-        // 加载修正后的数据
-        map.data.addGeoJson(data);
-
-        // 样式设置
-        map.data.setStyle({
-          strokeColor: "#0000FF",
-          strokeWeight: 2,
-          strokeOpacity: 0.8
-        });
-
-        // 点击提示
-        map.data.addListener("click", e => {
-          const name = e.feature.getProperty("name") || "未命名河流";
-          new google.maps.InfoWindow({
-            content: `<b>${name}</b>`,
-            position: e.latLng
-          }).open(map);
-        });
-      })
-      .catch(err => console.error("加载 GeoJSON 失败:", err));
-  }
-</script>
-
-    <!-- 用老版 JS API 正确加载 -->
-    <script async
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1DDVsoYSslYif9JG1EmZt04uUWiZGJgE&callback=initMap">
-    </script>
-    
-    <style>
-      html, body { height: 100%; margin: 0; padding: 0; }
-      #map { height: 100%; width: 100%; }
       #panel {
         position: absolute;
         top: 10px;
@@ -101,18 +25,70 @@
         z-index: 999;
       }
     </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <div id="panel">
+      <button id="clearBtn">清除测距</button>
+      <span id="distance">总距离：0 km</span>
+    </div>
+
     <script>
       let map;
       let path = [];
       let polyline;
       let totalDistance = 0;
+      let markers = [];
 
       function initMap() {
+        // 初始化地图
         map = new google.maps.Map(document.getElementById("map"), {
           center: { lat: 0, lng: 0 },
-          zoom: 2
+          zoom: 2,
+          mapTypeId: "terrain"
         });
 
+        // 加载河流 GeoJSON 文件
+        fetch('heliu.json')
+          .then(res => res.json())
+          .then(data => {
+            // 修复坐标格式
+            function fixCoordinates(coords) {
+              if (typeof coords[0] === "number" && typeof coords[1] === "number") {
+                const [a, b] = coords;
+                if (Math.abs(a) <= 90 && Math.abs(b) > 90) {
+                  return [b, a];
+                }
+                return [a, b];
+              }
+              return coords.map(fixCoordinates);
+            }
+
+            data.features.forEach(f => {
+              if (f.geometry && f.geometry.coordinates) {
+                f.geometry.coordinates = fixCoordinates(f.geometry.coordinates);
+              }
+            });
+
+            map.data.addGeoJson(data);
+            map.data.setStyle({
+              strokeColor: "#0000FF",
+              strokeWeight: 2,
+              strokeOpacity: 0.8
+            });
+
+            map.data.addListener("click", e => {
+              const name = e.feature.getProperty("name") || "未命名河流";
+              new google.maps.InfoWindow({
+                content: `<b>${name}</b>`,
+                position: e.latLng
+              }).open(map);
+            });
+          })
+          .catch(err => console.error("加载 GeoJSON 失败:", err));
+
+        // 初始化测距线
         polyline = new google.maps.Polyline({
           path: path,
           geodesic: true,
@@ -122,6 +98,7 @@
           map: map
         });
 
+        // 点击地图测距
         map.addListener("click", (e) => {
           path.push(e.latLng);
           polyline.setPath(path);
@@ -131,28 +108,28 @@
             totalDistance += dist;
             document.getElementById("distance").innerText = `总距离：${totalDistance.toFixed(2)} km`;
           }
-          new google.maps.Marker({
+          const marker = new google.maps.Marker({
             position: e.latLng,
             map: map,
             title: `点 ${path.length}`
           });
+          markers.push(marker);
         });
 
+        // 清除按钮功能
         document.getElementById("clearBtn").addEventListener("click", () => {
           path = [];
           totalDistance = 0;
           polyline.setPath([]);
           document.getElementById("distance").innerText = "总距离：0 km";
-          // 清除所有 marker
-          for (const m of markers) m.setMap(null);
+          markers.forEach(m => m.setMap(null));
           markers = [];
         });
       }
 
-      let markers = [];
-
+      // 计算两点间球面距离
       function haversineDistance(p1, p2) {
-        const R = 6371; // 地球半径 km
+        const R = 6371; // 地球半径 (km)
         const lat1 = p1.lat() * Math.PI / 180;
         const lat2 = p2.lat() * Math.PI / 180;
         const dLat = lat2 - lat1;
@@ -164,15 +141,9 @@
       }
     </script>
 
-
-
-
-    
+    <!-- Google Maps JS -->
+    <script async
+      src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap">
+    </script>
   </body>
 </html>
-
-
-
-
-
-
