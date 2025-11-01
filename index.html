@@ -20,7 +20,11 @@
   </style>
 </head>
 <body>
-  <!-- 用老版 JS API 正确加载 --> <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1DDVsoYSslYif9JG1EmZt04uUWiZGJgE&callback=initMap"> </script>
+  
+
+  <!-- ✅ 一定要带 geometry 库 -->
+  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD1DDVsoYSslYif9JG1EmZt04uUWiZGJgE&libraries=geometry&callback=initMap"></script>
+  
   <div id="map"></div>
   <div id="panel">
     <button id="clearBtn">清除</button>
@@ -165,17 +169,13 @@
   }
 </script>
 
-<!-- ✅ 一定要带 geometry 库 -->
-<script async
-  src="https://maps.googleapis.com/maps/api/js?key=你的API_KEY&libraries=geometry&callback=initMap">
-</script>
-
 
 
 
     
   </body>
 </html>
+
 
 
 
