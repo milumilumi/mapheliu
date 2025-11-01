@@ -32,12 +32,12 @@
   </div>
 
  <script>
-  let map;
-  let path = [];
-  let polyline;
-  let markers = [];
-  let totalDistance = 0;
-  let infoWindow;
+    let map;
+    let path = [];
+    let polyline;
+    let markers = [];
+    let totalDistance = 0;
+    let polygonClosed = false;
 
   function initMap() {
     map = new google.maps.Map(document.getElementById("map"), {
@@ -85,88 +85,59 @@
 
     // ===== 测距线初始化 =====
     polyline = new google.maps.Polyline({
-      path: path,
-      geodesic: true,
-      strokeColor: "#FF0000",
-      strokeOpacity: 0.9,
-      strokeWeight: 2.5,
-      map: map,
-    });
+        path: path,
+        geodesic: true,
+        strokeColor: "#FF0000",
+        strokeWeight: 3,
+        map: map
+      });
 
-    // 点击地图添加测距点
-    map.addListener("click", (e) => {
-      addPoint(e.latLng);
-    });
+      map.addListener("click", (e) => {
+        if (polygonClosed) return;
 
-    // 右键撤销上一个点
-    map.addListener("rightclick", () => {
-      if (path.length > 0) {
-        path.pop();
-        polyline.setPath(path);
-        const last = markers.pop();
-        if (last) last.setMap(null);
-        recalcDistance();
-      }
-    });
+        const clickedLatLng = e.latLng;
+			path.push(clickedLatLng);
+			addMarker(clickedLatLng);
+			updatePolyline();
+			recalcDistanceAndArea();
+      });
 
-    document.getElementById("clearBtn").addEventListener("click", clearAll);
-  }
-
-  // 添加测距点（使用黑色圆点）
-  function addPoint(latLng) {
-    path.push(latLng);
-    polyline.setPath(path);
-
-    const marker = new google.maps.Marker({
-      position: latLng,
-      map: map,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE, // 圆形符号
-        scale: 4,                            // 圆点大小
-        fillColor: "#000000",                // 黑色填充
-        fillOpacity: 1,
-        strokeColor: "#FFFFFF",              // 白色边缘
-        strokeWeight: 1,
-      },
-      clickable: false,
-    });
-    markers.push(marker);
-
-    recalcDistance();
-  }
-
-  // 重新计算总距离
-  function recalcDistance() {
-    totalDistance = 0;
-    for (let i = 1; i < path.length; i++) {
-      totalDistance += haversineDistance(path[i - 1], path[i]);
+      document.getElementById("clearBtn").addEventListener("click", clearAll);
     }
-    document.getElementById("distance").innerText =
-      `总距离：${totalDistance.toFixed(2)} km`;
-  }
 
-  // 清除所有测距
-  function clearAll() {
-    path = [];
-    totalDistance = 0;
-    polyline.setPath([]);
-    document.getElementById("distance").innerText = "总距离：0 km";
-    markers.forEach((m) => m.setMap(null));
-    markers = [];
-  }
+    function addMarker(latLng){
+      const marker = new google.maps.Marker({
+        position: latLng,
+        map: map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 4,
+          fillColor: "#000000",
+          fillOpacity: 1,
+          strokeColor: "#FFFFFF",
+          strokeWeight: 1
+        },
+        clickable: false
+      });
+      markers.push(marker);
+    }
 
-  // 球面距离
-  function haversineDistance(p1, p2) {
-    const R = 6371;
-    const lat1 = p1.lat() * Math.PI / 180;
-    const lat2 = p2.lat() * Math.PI / 180;
-    const dLat = lat2 - lat1;
-    const dLng = (p2.lng() - p1.lng()) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) ** 2 +
-              Math.cos(lat1) * Math.cos(lat2) *
-              Math.sin(dLng / 2) ** 2;
-    return 2 * R * Math.asin(Math.sqrt(a));
-  }
+    function updatePolyline(){
+      polyline.setPath(path);
+    }
+
+
+
+    function clearAll(){
+      path = [];
+      totalDistance = 0;
+      polygonClosed = false;
+      polyline.setPath([]);
+      markers.forEach(m => m.setMap(null));
+      markers = [];
+      document.getElementById("info").innerText = "总距离：0 km 面积：0 km²";
+    }
+
 </script>
 
 
@@ -175,6 +146,7 @@
     
   </body>
 </html>
+
 
 
 
